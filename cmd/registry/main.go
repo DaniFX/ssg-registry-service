@@ -24,25 +24,43 @@ func main() {
 
 	r := gin.Default()
 
-	// 2. Sicurezza (Middleware)
-	r.Use(nexus.Guard())
-
-	// 3. Service Discovery
+	// 2. Service Discovery (DEVE ESSERE PRIMA DEL GUARD O FUORI DAL GRUPPO)
+	// È buona pratica usare path assoluti che includano il nome del servizio
 	def := nexus.ServiceDefinition{
 		ServiceName: "registry-service",
 		Version:     "1.0.0",
 		Endpoints: []nexus.Endpoint{
-			{Path: "/entities", Method: "POST", AuthRequired: true},
+			{
+				Path:         "/api/v1/registry/entities",
+				Method:       "POST",
+				AuthRequired: true,
+				Summary:      "Crea una nuova entità nel registro",
+			},
 		},
 	}
+
+	// Registra in automatico GET /_discover senza il Guard
 	nexus.RegisterDiscovery(r, def)
 
+	// Avvia l'handshake (PUSH verso il Gateway)
 	nexus.StartGatewayHandshake(def)
 
-	// 4. Rotte
+	// 3. Rotte di Business (PROTETTE DAL GUARD)
 	h := &handlers.EntityHandler{Repo: entityRepo}
-	r.POST("/entities", h.Create)
+
+	// Creiamo un gruppo specifico per le API di questo servizio
+	api := r.Group("/api/v1/registry")
+
+	// Applichiamo la sicurezza SOLO a questo gruppo!
+	api.Use(nexus.Guard())
+	{
+		api.POST("/entities", h.Create)
+		// api.GET("/entities", h.List)
+		// ... altre rotte protette
+	}
 
 	log.Println("Avvio Registry Service sulla porta 8080...")
-	r.Run(":8080")
+	if err := r.Run(":8080"); err != nil {
+		log.Fatalf("Errore critico del server: %v", err)
+	}
 }
