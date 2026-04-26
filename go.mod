@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	cloud.google.com/go/firestore v1.22.0
-	github.com/DaniFX/ssg-nexus-sdk v0.0.0-20260425170032-5239c8e186c6
+	github.com/DaniFX/ssg-nexus-sdk v0.0.0-20260426062103-466a2583dc87
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
 )
