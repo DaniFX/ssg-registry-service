@@ -1,7 +1,7 @@
 # ==========================================
 # Fase 1: Build
 # ==========================================
-FROM golang:1.21-alpine AS builder
+FROM golang:1.26.2-alpine AS builder
 
 # Impostiamo la directory di lavoro dentro il container
 WORKDIR /app
