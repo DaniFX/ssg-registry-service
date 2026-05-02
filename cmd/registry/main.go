@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 
@@ -25,16 +26,39 @@ func main() {
 	r := gin.Default()
 
 	// 2. Service Discovery (DEVE ESSERE PRIMA DEL GUARD O FUORI DAL GRUPPO)
-	// È buona pratica usare path assoluti che includano il nome del servizio
 	def := nexus.ServiceDefinition{
 		ServiceName: "registry-service",
 		Version:     "1.0.0",
 		Endpoints: []nexus.Endpoint{
 			{
 				Path:         "/api/v1/registry/entities",
+				Method:       "GET",
+				AuthRequired: true,
+				Summary:      "Lista tutte le entità nel registro",
+			},
+			{
+				Path:         "/api/v1/registry/entities",
 				Method:       "POST",
 				AuthRequired: true,
 				Summary:      "Crea una nuova entità nel registro",
+			},
+			{
+				Path:         "/api/v1/registry/entities/:id",
+				Method:       "GET",
+				AuthRequired: true,
+				Summary:      "Recupera un'entità per ID",
+			},
+			{
+				Path:         "/api/v1/registry/entities/:id",
+				Method:       "PATCH",
+				AuthRequired: true,
+				Summary:      "Aggiorna un'entità nel registro",
+			},
+			{
+				Path:         "/api/v1/registry/entities/:id",
+				Method:       "DELETE",
+				AuthRequired: true,
+				Summary:      "Elimina (soft delete) un'entità dal registro",
 			},
 		},
 	}
@@ -48,19 +72,24 @@ func main() {
 	// 3. Rotte di Business (PROTETTE DAL GUARD)
 	h := &handlers.EntityHandler{Repo: entityRepo}
 
-	// Creiamo un gruppo specifico per le API di questo servizio
 	api := r.Group("/api/v1/registry")
-
-	// Applichiamo la sicurezza SOLO a questo gruppo!
 	api.Use(nexus.Guard())
 	{
+		api.GET("/entities", h.List)
 		api.POST("/entities", h.Create)
-		// api.GET("/entities", h.List)
-		// ... altre rotte protette
+		api.GET("/entities/:id", h.GetByID)
+		api.PATCH("/entities/:id", h.Update)
+		api.DELETE("/entities/:id", h.Delete)
 	}
 
-	log.Println("Avvio Registry Service sulla porta 8080...")
-	if err := r.Run(":8080"); err != nil {
+	// fix #3: PORT letta da variabile d'ambiente (Cloud Run compliance)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // fallback locale
+	}
+
+	log.Printf("Avvio Registry Service sulla porta %s...", port)
+	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Errore critico del server: %v", err)
 	}
 }
